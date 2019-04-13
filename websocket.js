@@ -47,9 +47,9 @@ function parseMessage(message) {
     if(match = message.match(/(\d+)\/(\d{12})/)) {
         return {
             startnumber: parseInt(match[1]),
-            starttime: parseFloat(match[2])
+            time: parseFloat(match[2])
         };
     } else {
-        return undefined;
+        return null;
     }
 }
