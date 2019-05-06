@@ -1,5 +1,5 @@
 var webSocketStart = new WebSocket("ws://127.0.0.1:1001");
-var webSocketFinish = new WebSocket("ws://127.0.0.1:2002");
+var webSocketFinish = new WebSocket("ws://127.0.0.1:1002");
 
 webSocketStart.onopen = function(event) {
     console.log("Connection to Startkiste established");
@@ -22,7 +22,7 @@ webSocketStart.onmessage = function(event) {
     console.log("Message from Startkiste: " + message);
     var starter = parseMessage(message);
     if(starter) {
-        handleStartTime(starter);
+        start(starter.startnumber, starter.time);
     } else {
         // IGNORE
         // message probably broken
@@ -34,7 +34,7 @@ webSocketFinish.onmessage = function(event) {
     console.log("Message from Zielkiste: " + message);
     var starter = parseMessage(message);
     if(starter) {
-        handleFinishtTime(starter);
+        stop(starter.startnumber, starter.time);
     } else {
         // IGNORE
         // message probably broken

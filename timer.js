@@ -1,81 +1,118 @@
+const states = {
+    UNDEFINED: -1,
+    READY_FOR_LIVE: 1,
+    DISPLAYING_LIVE: 2,
+    READY_FOR_FINISH: 3,
+    DISPLAYING_FINISH: 4,
+    DONE: 5
+};
+
 class Timer {
     constructor(starter) {
         this.starter = starter;
-        this.startnumberElement = null;
-        this.timeElement = null;
-        this.displayingFinishTime = false;
-    }
-
-    get hasDisplaySpace() {
-        return this.startnumberElement != null && this.timeElement != null;
-    }
-
-    assignDisplaySpace(startnumberElement, timeElement) {
-        this.startnumberElement = startnumberElement;
-        this.timeElement = timeElement;
-        this.interval = setInterval(this.updateHTML, 100, this);
-    }
-
-    updateHTML(o) {
-        o.startnumberElement.innerHTML = Timer.getFormattedStartnumber(o.starter.startnumber);
-        o.timeElement.innerHTML = Timer.getFormattedTime(o.starter.startTime);
-    }
-
-    stop(time, callback) {
-        this.starter.finishTime = time;
-        clearInterval(this.interval);
-    }
-
-    displayFinishTime(callback) {
-        if (this.starter.finishTime != null) {
-            this.timeElement.innerHTML = Timer.getFormattedFinishTime(this.starter.startTime, this.starter.finishTime);
-            setTimeout(callback, 3000, this);
+        if (this.starter.startnumber != null && this.starter.startTime != null) {
+            this.state = states.READY_FOR_LIVE;
         } else {
-            console.log("no finishTime set for startnumber " + this.starter.startnumber);
+            this.state = states.UNDEFINED;
+        }
+    }
+
+    assignDisplaySpace(displaySpace) {
+        this.displaySpace = displaySpace;
+        this.displaySpace.timer = this;
+        if (this.starter.finishTime != null) {
+            this.displayFinishTime();
+        } else {
+            this.displayLiveTime();
+        }
+    }
+
+    detachDisplaySpace() {
+        if (this.displaySpace != null) {
+            if (this.state = states.DISPLAYING_LIVE) {
+                clearInterval(this.interval);
+            }
+            // bei DISPLAYING_FINISH einfach nichts machen
+            this.displaySpace.timer = null;
+            this.displaySpace = null; // --> ablaufendes timeout läuft ins nichts
+        }
+    }
+    
+    handleFinishTime(time) {
+        this.starter.finishTime = time;
+        if (this.state == states.DISPLAYING_LIVE) {
+            clearInterval(this.interval);
+            this.displayFinishTime();
+            this.state = states.DISPLAYING_FINISH;
+        } else {
+            this.state = states.READY_FOR_FINISH;
+        }
+    }
+
+
+    // ------- UTILS -------
+
+    displayFinishTime() {
+        if (this.starter.startTime != null && this.starter.finishTime != null && this.displaySpace != null) {
+            this.state = states.DISPLAYING_FINISH;
+            this.displaySpace.startnumberElement.innerHTML = this.getFormattedStartnumber(this.starter.startnumber);
+            this.displaySpace.timeElement.innerHTML = this.getFormattedTotalTime(this.starter.startTime, this.starter.finishTime);
+            setTimeout(() => {
+                this.reset()
+            }, 5000);
+        }
+    }
+
+    displayLiveTime() {
+        if (this.displaySpace != null && this.starter.startnumber != null && this.starter.startTime != null) {
+            this.state = states.DISPLAYING_LIVE;
+            this.displaySpace.startnumberElement.innerHTML = this.getFormattedStartnumber(this.starter.startnumber);
+            this.interval = setInterval(() => {
+                this.updateLiveTime()
+            }, 100);
+        }
+    }
+
+    updateLiveTime() {
+        if (this.displaySpace != null && this.starter.startTime != null) {
+            this.displaySpace.timeElement.innerHTML = this.getFormattedLiveTime(this.starter.startTime);
         }
     }
 
     reset() {
-        this.isDisplayingFinishTime = false;
-        this.startnumberElement.innerHTML = "000";
-        this.timeElement.innerHTML = "---.--";
-    }
-
-    updateDisplaySpace(startnumberElement, timeElement) {
-        this.startnumberElement = startnumberElement;
-        this.timeElement = timeElement;
-        this.startnumberElement.innerHTML = Timer.getFormattedStartnumber(this.starter.startnumber);
-        if (this.interval == null) {
-            this.timeElement.innerHTML = Timer.getFormattedFinishTime(this.starter.startTime, this.starter.finishTime);
+        if (this.displaySpace != null) {
+            this.detachDisplaySpace();
         }
+        this.state = states.DONE;
+        // else nothing (displaySpace probably detached)
+        updateAssignments();
     }
 
+    getFormattedLiveTime(startTime) {
+        var time = this.getCurrentTime() - startTime;
+        time = Math.round(time / 10) / 10;
+        var s = time.toFixed(1);
+        return this.padLeft(s, "0", 5) + " ";
+    }
 
-    //------------ UTILS -----------
+    getFormattedTotalTime(startTime, finishTime) {
+        var time = finishTime - startTime;
+        var s = (time / 100).toFixed(2);
+        return this.padLeft(s, "0", 6);
+    }
 
-    static getFormattedStartnumber(startnumber) {
+    getFormattedStartnumber(startnumber) {
         var s = startnumber + "";
         while (s.length < 3) s = " " + s;
         return s;
     }
 
-    static getFormattedTime(time) {
-        var timeDiff = (Math.round(new Date().getTime() / 100 - time / 10)) / 10;
-        timeDiff = timeDiff + "";
-        var timeStrings = timeDiff.split(".");
-        if (timeStrings.length < 2) timeStrings.push("0");
-        while (timeStrings[0].length < 3) timeStrings[0] = "0" + timeStrings[0];
-        while (timeStrings[1].length < 2) timeStrings[1] = timeStrings[1] + " ";
-        return timeStrings[0] + "." + timeStrings[1];
+    getCurrentTime() {
+        return Math.round(new Date().getTime() / 10);
     }
 
-    static getFormattedFinishTime(startTime, finishTime) {
-        var timeDiff = (finishTime - startTime) / 100;
-        timeDiff = timeDiff + "";
-        var timeStrings = timeDiff.split(".");
-        if (timeStrings.length < 2) timeStrings.push("0");
-        while (timeStrings[0].length < 3) timeStrings[0] = "0" + timeStrings[0];
-        while (timeStrings[1].length < 2) timeStrings[1] = timeStrings[1] + "0";
-        return timeStrings[0] + "." + timeStrings[1];
+    padLeft(s, c, n) {
+        while (s.length < n) s = c + s;
+        return s;
     }
 }

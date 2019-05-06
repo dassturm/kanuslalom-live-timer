@@ -1,66 +1,63 @@
-var timer = new Timer({
-        startnumber: 1,
-        startTime: getTime()
-    });
+let ds1 = new DisplaySpace(document.getElementById("startnumber2"), document.getElementById("time2"));
+let ds2 = new DisplaySpace(document.getElementById("startnumber1"), document.getElementById("time1"));
 
-var timers = [];
-var lastStartnumber = 0;
+liveTimers = [];
+finishedTimers = [];
 
-function start() {
-    lastStartnumber++;
-    var timer = new Timer({
-        startnumber: lastStartnumber,
-        startTime: getTime()
-    });
-    var newLength = timers.push(timer);
-    if(newLength == 1) {
-        timer.assignDisplaySpace(elements.startnumber2, elements.time2);
-    } else if (newLength == 2) {
-        timer.assignDisplaySpace(elements.startnumber1, elements.time1);
-    }
-}
-
-function stop() {
-    var firstTimer = timers[0];
-    firstTimer.handleFinishTime(getTime(), callback);
-}
-
-function handleStartTime(startnumber, time) {
-    var timer = new Timer({
+function start(startnumber, startTime = getCurrentTime()) {
+    var starter = {
         startnumber: startnumber,
-        startTime: time
-    });
-    var newLength = timers.push(timer);
-    if(newLength == 1) {
-        timer.assignDisplaySpace(elements.startnumber2, elements.time2);
-    } else if (newLength == 2) {
-        timer.assignDisplaySpace(elements.startnumber1, elements.time1);
+        startTime: startTime
+    };
+    liveTimers.push(new Timer(starter));
+    updateAssignments();
+}
+
+function stop(startnumber, finishTime = getCurrentTime()) {
+    var timer = getTimerByStartnumber(startnumber);
+    if (timer) {
+        timer.handleFinishTime(finishTime);
+        liveTimers = liveTimers.filter((value, index, arr) => value !== timer);
+        finishedTimers.push(timer);
+        if (timer.state == states.READY_FOR_FINISH) {
+            updateAssignments();
+        }
     }
 }
 
-function handleFinishtTime(startnumber, time) {
-    
+function updateAssignments() {
+    finishedTimers = finishedTimers.filter((value, index, arr) => value.state !== states.DONE);
+    var timers = finishedTimers.concat(liveTimers);
+    if (timers.length > 0) {
+        if (timers[0].displaySpace !== ds1) {
+            timers[0].detachDisplaySpace();
+            if (ds1.timer != null) ds1.timer.detachDisplaySpace();
+            timers[0].assignDisplaySpace(ds1);
+        }
+    } else {
+        ds1.reset();
+    }
+    if (timers.length > 1) {
+        if (timers[1].displaySpace !== ds2) {
+            timers[1].detachDisplaySpace();
+            if (ds2.timer != null) ds2.timer.detachDisplaySpace();
+            timers[1].assignDisplaySpace(ds2);
+        }
+    } else {
+        ds2.reset();
+    }
 }
 
-var elements = {
-    startnumber1: document.getElementById("startnumber1"),
-    startnumber2: document.getElementById("startnumber2"),
-    time1: document.getElementById("time1"),
-    time2: document.getElementById("time2")
-};
-
-function callback(timer) {
-    timer.reset();
-    timers.splice(timers.indexOf(timer), 1);
+function getTimerByStartnumber(startnumber) {
+    var timers = liveTimers.concat(finishedTimers);
+    for (timer of timers) {
+        if (timer.starter.startnumber === startnumber) {
+            return timer;
+        }
+    }
+    return false;
 }
 
-//------------------ UTILS ------------------
-
-function getTime() {
+function getCurrentTime() {
     return Math.round(new Date().getTime() / 10);
 }
-
-/* 
-Format: <startnummer>/<zeit>
-<zeit>: Zeit in 10ms seit UNIX-Epoch (hat dann 12 Stellen)
-*/
